@@ -27,8 +27,7 @@ for everyone — no reinstall needed.
 ## Updating guides
 
 1. Re-encrypt your new guide text with the original BattleTag key.
-2. Replace `guide.txt` in this repo and commit.
-3. All users get the update next time they open their tool.
+2. All users get the update next time they open their tool.
 
 ---
 
