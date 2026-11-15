@@ -14,7 +14,7 @@ for everyone — no reinstall needed.
 - `guide.txt` is an RC4+zlib encrypted blob keyed to a BattleTag.
 - The standalone tool downloads this file, decrypts it with the user's
   BattleTag, and copies the resulting guide text to their clipboard.
-- To update guides for all users, simply replace `guide.txt` in this repo.
+- To update guides for all users owner must, simply replace `guide.txt` in this repo.
 
 ## File format
 
