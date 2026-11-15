@@ -30,7 +30,7 @@ for everyone — no reinstall needed.
 2. All users get the update next time they open their tool.
 
 ---
-DISCLAIMER: THE TOOL IS NOT DISTRIBUTED HERE
 
+FREE RXP, FREE rested xp, Cracked Restedxp
 
 *Made by slcker*
