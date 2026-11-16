@@ -26,9 +26,6 @@
     color: var(--text);
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     padding: 20px;
   }
 
@@ -38,6 +35,7 @@
     padding: 40px;
     width: 100%;
     max-width: 480px;
+    margin: 0 auto;
     box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(137,180,250,0.1);
     position: relative;
     overflow: hidden;
@@ -263,14 +261,139 @@
     transform: translateX(-50%) translateY(0);
     opacity: 1;
   }
+
+  /* Landing section */
+  .landing {
+    width: 100%;
+    background: var(--bg);
+    padding: 60px 24px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .landing-inner {
+    max-width: 520px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .landing-badge {
+    font-size: 0.8rem;
+    color: var(--green);
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    margin-bottom: 20px;
+  }
+
+  .landing-title {
+    font-size: 2.4rem;
+    font-weight: 800;
+    line-height: 1.15;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+
+  .landing-desc {
+    font-size: 0.95rem;
+    color: var(--subtext);
+    line-height: 1.7;
+    margin-bottom: 28px;
+  }
+
+  .landing-card {
+    background: var(--surface);
+    border: 1px solid var(--overlay);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+    text-align: left;
+  }
+
+  .card-header {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--green);
+    margin-bottom: 12px;
+  }
+
+  .card-list {
+    list-style: none;
+    padding: 0;
+    color: var(--subtext);
+    font-size: 0.85rem;
+    line-height: 1.7;
+  }
+
+  .card-list li { margin-bottom: 6px; padding-left: 16px; position: relative; }
+  .card-list li::before { content: '•'; position: absolute; left: 0; color: var(--accent); }
+  .card-list strong { color: var(--text); }
+
+  .landing-cta {
+    display: inline-block;
+    padding: 12px 28px;
+    background: linear-gradient(135deg, var(--accent), #7aa2f8);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s;
+  }
+
+  .landing-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(137,180,250,0.3);
+  }
+
+  .howto {
+    max-width: 480px;
+    margin: 24px auto 0;
+    background: var(--surface);
+    border: 1px solid var(--overlay);
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+
+  .howto h3 {
+    font-size: 0.9rem;
+    color: var(--green);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  .howto ol {
+    padding-left: 18px;
+    color: var(--subtext);
+    font-size: 0.85rem;
+    line-height: 1.8;
+  }
+
+  .howto strong { color: var(--text); }
 </style>
 </head>
 <body>
 
-<div class="container">
+<div class="landing" id="landing">
+  <div class="landing-inner">
+    <div class="landing-badge">RXPFree /</div>
+    <h1 class="landing-title">Skip the paywall.<br>Forever Guides, free.</h1>
+    <div class="landing-card">
+      <div class="card-header">🔒 Private by design</div>
+      <ul class="card-list">
+        <li><strong>Your tag stays on your machine.</strong> No server ever sees it.</li>
+        <li><strong>No cookies, no analytics.</strong> This page talks to nothing but GitHub's raw file host.</li>
+        <li><strong>Takes 5 seconds.</strong> Paste the result into WoW and you're done.</li>
+      </ul>
+    </div>
+    <button class="landing-cta" onclick="scrollToTool()">Get your guide ↓</button>
+  </div>
+</div>
+
+<div class="container" id="toolSection">
   <div class="logo">
-    <h1>RXP Decryption Tool</h1>
-    <p>Generate your personal RXPGuides file</p>
+    <h1>Generate Your Guide</h1>
+    <p>Paste into RXPGuides to unlock</p>
   </div>
 
   <div class="field-group">
@@ -298,6 +421,15 @@
   <div class="status" id="status">Enter your BattleTag and click Copy</div>
 
   <div class="footer">v1.0 | made by slcker</div>
+
+  <div class="howto">
+    <h3>How to use</h3>
+    <ol>
+      <li><strong>Copy</strong> your guide string from above</li>
+      <li>In WoW → RXPGuides menu → <strong>Import guide</strong></li>
+      <li>Paste (Ctrl+V) → click <strong>Import</strong></li>
+    </ol>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -592,6 +724,10 @@ function showToast(msg) {
   toast.textContent = msg;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function scrollToTool() {
+  document.getElementById('toolSection').scrollIntoView({ behavior: 'smooth' });
 }
 
 // === Init ===
