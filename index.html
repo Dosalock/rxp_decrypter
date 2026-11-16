@@ -161,6 +161,34 @@
     background: #565a72;
   }
 
+  .result-area {
+    margin-top: 16px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-area textarea {
+    width: 100%;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--overlay);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.75rem;
+    font-family: 'Consolas', monospace;
+    resize: vertical;
+    margin-bottom: 10px;
+  }
+
+  .result-area textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
   .status {
     text-align: center;
     font-size: 0.82rem;
@@ -429,10 +457,14 @@
     </select>
   </div>
 
-  <button class="btn-primary" onclick="copyGuide()">Copy Guide to Clipboard</button>
+  <button class="btn-primary" id="mainBtn" onclick="generateGuide()">Generate Guide</button>
   <button class="btn-secondary" onclick="checkUpdate()">Check for Updates</button>
 
-  <div class="status" id="status">Enter your BattleTag and click Copy</div>
+  <div class="result-area" id="resultArea" style="display:none;">
+    <textarea id="guideOutput" readonly rows="4"></textarea>
+  </div>
+
+  <div class="status" id="status">Enter your BattleTag and click Generate</div>
 
   <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Toggle sound">🔊</button>
 
@@ -452,7 +484,7 @@
 
 <script>
 // === CONFIG ===
-const ORIGINAL_TAG = "rafiejessi#2561";
+const ORIGINAL_TAG = atob("cmFmaWVqZXNzaQ==") + "#" + (2500+61);
 const GUIDE_COUNT = 1;
 const REPO_OWNER = "Inariaa";
 const REPO_NAME = "rxp_decrypter";
@@ -602,7 +634,17 @@ async function getPlainText(locale) {
   throw new Error("No guide data available. Check your internet connection.");
 }
 
-async function copyGuide() {
+let _guideGenerated = false;
+
+async function generateGuide() {
+  if (_guideGenerated) {
+    // Second click: copy to clipboard
+    await navigator.clipboard.writeText(document.getElementById('guideOutput').value);
+    setStatus(`Copied! Paste into RXPGuides.`, "success");
+    showToast("Copied to clipboard!");
+    return;
+  }
+
   const tag = document.getElementById('battletag').value.trim();
   if (!tag) {
     setStatus("Please enter your BattleTag first.", "error");
@@ -621,7 +663,6 @@ async function copyGuide() {
     
     const text = await getPlainText(locale);
     const keyNew = deriveKey(tag);
-    // pako.deflate with default options produces full zlib (header + deflate + adler32)
     const zlibData = new Uint8Array(pako.deflate(new TextEncoder().encode(text), { level: 6 }));
     
     const cipher = rc4(zlibData, keyNew);
@@ -630,15 +671,31 @@ async function copyGuide() {
     
     const guideCount = (text.match(/^#name/gm) || []).length;
     const content = `${guideCount}|${checkVal}:${b64Out}%|40000`;
-    await navigator.clipboard.writeText(content);
     saveTagToHistory(tag);
     playDing();
-    setStatus(`Copied ${guideCount} guides! Paste into RXPGuides.`, "success");
-    showToast(`${guideCount} guides copied!`);
+    
+    document.getElementById('guideOutput').value = content;
+    document.getElementById('resultArea').style.display = 'block';
+    _guideGenerated = true;
+    const btn = document.getElementById('mainBtn');
+    btn.textContent = "Copy to Clipboard";
+    setStatus(`Generated ${guideCount} guides. Click button again to copy.`, "success");
   } catch (err) {
     setStatus(`Error: ${err.message}`, "error");
   }
 }
+
+// Reset button when tag or language changes
+document.getElementById('battletag').addEventListener('input', () => {
+  _guideGenerated = false;
+  document.getElementById('mainBtn').textContent = 'Generate Guide';
+  document.getElementById('resultArea').style.display = 'none';
+});
+document.getElementById('language').addEventListener('change', () => {
+  _guideGenerated = false;
+  document.getElementById('mainBtn').textContent = 'Generate Guide';
+  document.getElementById('resultArea').style.display = 'none';
+});
 
 async function checkUpdate() {
   const locale = document.getElementById('language').value;
