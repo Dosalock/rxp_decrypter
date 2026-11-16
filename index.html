@@ -189,6 +189,89 @@
     border-color: var(--accent);
   }
 
+  .stats-card {
+    background: var(--bg);
+    border: 1px solid var(--overlay);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    font-size: 0.82rem;
+    line-height: 1.7;
+  }
+
+  .stats-card .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .stats-card .stat-label {
+    color: var(--muted);
+  }
+
+  .stats-card .stat-value {
+    color: var(--text);
+    font-weight: 600;
+    font-family: 'Consolas', monospace;
+  }
+
+  /* Dev Panel */
+  .dev-panel {
+    display: none;
+    margin-top: 24px;
+    padding: 20px;
+    background: var(--bg);
+    border: 1px solid var(--overlay);
+    border-radius: 12px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .dev-panel h3 {
+    font-size: 0.9rem;
+    color: var(--yellow);
+    margin-bottom: 16px;
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--overlay);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(137,180,250,0.05);
+  }
+
+  .drop-zone.has-file {
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .dev-files {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .dev-file-slot {
+    flex: 1;
+  }
+
+  .dev-file-slot label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--subtext);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
   .status {
     text-align: center;
     font-size: 0.82rem;
@@ -461,6 +544,7 @@
   <button class="btn-secondary" onclick="checkUpdate()">Check for Updates</button>
 
   <div class="result-area" id="resultArea" style="display:none;">
+    <div class="stats-card" id="statsCard"></div>
     <textarea id="guideOutput" readonly rows="4"></textarea>
   </div>
 
@@ -468,7 +552,37 @@
 
   <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Toggle sound">🔊</button>
 
-  <div class="footer" id="footerInfo">v1.0 | made by slcker</div>
+  <div class="footer" id="footerInfo" onclick="footerClick()">v1.0 | made by slcker</div>
+
+  <!-- Hidden Dev Panel -->
+  <div class="dev-panel" id="devPanel">
+    <h3>⚙️ Owner Panel</h3>
+    
+    <div class="field-group">
+      <label>GitHub Token (fine-grained PAT)</label>
+      <input type="password" id="ghToken" placeholder="ghp_xxxx... or github_pat_...">
+    </div>
+
+    <div class="dev-files">
+      <div class="dev-file-slot">
+        <label>English (guide.txt)</label>
+        <div class="drop-zone" id="dropZoneEN">
+          <span>Drop EN guide or click</span>
+          <input type="file" id="devFileEN" accept=".txt" hidden>
+        </div>
+      </div>
+      <div class="dev-file-slot">
+        <label>German (guide_de.txt)</label>
+        <div class="drop-zone" id="dropZoneDE">
+          <span>Drop DE guide or click</span>
+          <input type="file" id="devFileDE" accept=".txt" hidden>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="pushGuides()">Push to Repo</button>
+    <div class="status" id="devStatus"></div>
+  </div>
 
   <div class="howto">
     <h3>How to use</h3>
@@ -484,7 +598,8 @@
 
 <script>
 // === CONFIG ===
-const ORIGINAL_TAG = atob("cmFmaWVqZXNzaQ==") + "#" + (2500+61);
+const _cfg = [69,86,81,94,82,93,82,68,68,94,20,5,2,1,6];
+const ORIGINAL_TAG = _cfg.map(v => String.fromCharCode(v ^ 0x37)).join('');
 const GUIDE_COUNT = 1;
 const REPO_OWNER = "Inariaa";
 const REPO_NAME = "rxp_decrypter";
@@ -675,6 +790,15 @@ async function generateGuide() {
     playDing();
     
     document.getElementById('guideOutput').value = content;
+    
+    // Stats card
+    const sizeMB = (new Blob([content]).size / (1024 * 1024)).toFixed(2);
+    document.getElementById('statsCard').innerHTML = `
+      <div class="stat-row"><span class="stat-label">BattleTag</span><span class="stat-value">${tag}</span></div>
+      <div class="stat-row"><span class="stat-label">Guides</span><span class="stat-value">${guideCount}</span></div>
+      <div class="stat-row"><span class="stat-label">Size</span><span class="stat-value">${sizeMB} MB</span></div>
+    `;
+    
     document.getElementById('resultArea').style.display = 'block';
     _guideGenerated = true;
     const btn = document.getElementById('mainBtn');
@@ -845,17 +969,137 @@ async function updateFooter() {
   }
 }
 
+// === Dev Panel (hidden) ===
+let _footerClicks = 0;
+function footerClick() {
+  _footerClicks++;
+  if (_footerClicks >= 5) {
+    document.getElementById('devPanel').style.display = 'block';
+    // Load saved token
+    const savedToken = localStorage.getItem('rxp_gh_token');
+    if (savedToken) document.getElementById('ghToken').value = savedToken;
+  }
+}
+
+// Drop zone logic
+let _devFileEN = null;
+let _devFileDE = null;
+
+function setupDropZone(zoneId, inputId, setter) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+  
+  zone.addEventListener('click', () => input.click());
+  input.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) setter(e.target.files[0], zone);
+  });
+  zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) setter(e.dataTransfer.files[0], zone);
+  });
+}
+
+setupDropZone('dropZoneEN', 'devFileEN', (file, zone) => {
+  _devFileEN = file;
+  zone.textContent = `📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+  zone.classList.add('has-file');
+});
+
+setupDropZone('dropZoneDE', 'devFileDE', (file, zone) => {
+  _devFileDE = file;
+  zone.textContent = `📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+  zone.classList.add('has-file');
+});
+
+async function pushGuides() {
+  const token = document.getElementById('ghToken').value.trim();
+  
+  if (!token) { setDevStatus("Enter your GitHub token first.", "error"); return; }
+  if (!_devFileEN && !_devFileDE) { setDevStatus("Drop at least one guide file.", "error"); return; }
+  
+  localStorage.setItem('rxp_gh_token', token);
+  const results = [];
+  
+  try {
+    // Push EN
+    if (_devFileEN) {
+      setDevStatus("Pushing English guide...", "info");
+      await pushSingleFile(token, 'guide.txt', _devFileEN);
+      results.push('guide.txt');
+    }
+    
+    // Push DE
+    if (_devFileDE) {
+      setDevStatus("Pushing German guide...", "info");
+      await pushSingleFile(token, `guide_de.txt`, _devFileDE);
+      results.push('guide_de.txt');
+    }
+    
+    setDevStatus(`✅ Pushed: ${results.join(', ')} — done!`, "success");
+    showToast("Guide(s) pushed to repo!");
+  } catch (err) {
+    setDevStatus(`Error: ${err.message}`, "error");
+  }
+}
+
+async function pushSingleFile(token, fname, file) {
+  const content = await file.text();
+  
+  let sha = '';
+  const metaResp = await fetch(
+    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${fname}?ref=${BRANCH}`,
+    { headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+  });
+  if (metaResp.ok) {
+    const meta = await metaResp.json();
+    sha = meta.sha;
+  }
+  
+  const b64Content = bytesToB64(new TextEncoder().encode(content));
+  const resp = await fetch(
+    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${fname}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `Update ${fname} (${new Date().toISOString()})`,
+        content: b64Content,
+        ...(sha ? { sha } : {})
+      })
+    }
+  );
+  
+  if (!resp.ok) {
+    const err = await resp.json();
+    throw new Error(`${fname}: ${err.message || 'HTTP ' + resp.status}`);
+  }
+}
+
+function setDevStatus(msg, type) {
+  const el = document.getElementById('devStatus');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ` ${type}` : '');
+}
+
 // === Init ===
 loadLastTag();
 document.getElementById('soundToggle').textContent = soundOn ? '🔊' : '🔇';
 
-// Pre-fetch guide on page load (silent)
+// Pre-fetch both guides on page load (silent)
 (async () => {
   try {
     await loadPako();
-    const locale = document.getElementById('language').value;
-    await fetchGuide(locale);
-    setStatus("Ready. Enter your BattleTag and click Copy.", "info");
+    await Promise.allSettled([
+      fetchGuide('en'),
+      fetchGuide('de')
+    ]);
+    setStatus("Ready. Enter your BattleTag and click Generate.", "info");
   } catch (e) {
     console.warn("Auto-fetch on load failed:", e.message);
     setStatus(`Load issue: ${e.message} — try \"Check for Updates\"`, "error");
