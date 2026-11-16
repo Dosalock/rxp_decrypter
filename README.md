@@ -1,5 +1,5 @@
 # rxp_decrypter
-Encrypted RXPGuides addon data — auto-updated guide packs for World of Warcraft
+Encrypted RXPGuides addon data (Forever Only in the Moment) — auto-updated guide packs for World of Warcraft
 # RXP Guides Data
 
 Encrypted guide files for the **RXPGuides** WoW addon.
