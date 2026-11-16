@@ -370,6 +370,20 @@
   }
 
   .howto strong { color: var(--text); }
+
+  .sound-toggle {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+
+  .sound-toggle:hover { opacity: 1; }
 </style>
 </head>
 <body>
@@ -419,6 +433,8 @@
   <button class="btn-secondary" onclick="checkUpdate()">Check for Updates</button>
 
   <div class="status" id="status">Enter your BattleTag and click Copy</div>
+
+  <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Toggle sound">🔊</button>
 
   <div class="footer">v1.0 | made by slcker</div>
 
@@ -527,7 +543,7 @@ async function fetchGuide(locale, forceRefresh = false) {
 
 function parseEncrypted(data, originalTag) {
   // Format: <count>|<check_value>:<base64>%|<trailing>
-  const m = data.match(/^(\d+)\|(\d+):(.+?)(%[\s\S]*)$/);
+  const m = data.match(/^(\d+)\|(\d+):([A-Za-z0-9+/=]+)%/);
   if (!m) throw new Error("Invalid guide format (no match)");
   
   const b64Payload = m[3];
@@ -605,29 +621,20 @@ async function copyGuide() {
     
     const text = await getPlainText(locale);
     const keyNew = deriveKey(tag);
-    const compressed = new Uint8Array(pako.deflate(new TextEncoder().encode(text), { level: 6 }));
-    
-    // Wrap in zlib format (header + deflate + adler32)
-    const zlibData = new Uint8Array(2 + compressed.length + 4);
-    zlibData[0] = 0x78;
-    zlibData[1] = 0x9C;
-    zlibData.set(compressed, 2);
-    const adler = adler32(new TextEncoder().encode(text));
-    zlibData[2 + compressed.length] = (adler >>> 24) & 0xFF;
-    zlibData[3 + compressed.length] = (adler >>> 16) & 0xFF;
-    zlibData[4 + compressed.length] = (adler >>> 8) & 0xFF;
-    zlibData[5 + compressed.length] = adler & 0xFF;
+    // pako.deflate with default options produces full zlib (header + deflate + adler32)
+    const zlibData = new Uint8Array(pako.deflate(new TextEncoder().encode(text), { level: 6 }));
     
     const cipher = rc4(zlibData, keyNew);
     const b64Out = bytesToB64(cipher);
     const checkVal = ((zlibData[zlibData.length - 4] << 24) | (zlibData[zlibData.length - 3] << 16) | (zlibData[zlibData.length - 2] << 8) | zlibData[zlibData.length - 1]) >>> 0;
     
-    const content = `${GUIDE_COUNT}|${checkVal}:${b64Out}%`;
-    
+    const guideCount = (text.match(/^#name/gm) || []).length;
+    const content = `${guideCount}|${checkVal}:${b64Out}%|40000`;
     await navigator.clipboard.writeText(content);
     saveTagToHistory(tag);
-    setStatus("Copied to clipboard! Paste into RXPGuides.", "success");
-    showToast("Guide copied!");
+    playDing();
+    setStatus(`Copied ${guideCount} guides! Paste into RXPGuides.`, "success");
+    showToast(`${guideCount} guides copied!`);
   } catch (err) {
     setStatus(`Error: ${err.message}`, "error");
   }
@@ -730,8 +737,35 @@ function scrollToTool() {
   document.getElementById('toolSection').scrollIntoView({ behavior: 'smooth' });
 }
 
+// === Sound ===
+let soundOn = localStorage.getItem('rxp_sound') !== 'off';
+function toggleSound() {
+  soundOn = !soundOn;
+  localStorage.setItem('rxp_sound', soundOn ? 'on' : 'off');
+  document.getElementById('soundToggle').textContent = soundOn ? '🔊' : '🔇';
+}
+
+function playDing() {
+  if (!soundOn) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
+}
+
 // === Init ===
 loadLastTag();
+document.getElementById('soundToggle').textContent = soundOn ? '🔊' : '🔇';
 
 // Pre-fetch guide on page load (silent)
 (async () => {
