@@ -423,7 +423,7 @@
 
   <div class="field-group">
     <label>Language</label>
-    <select id="language">
+    <select id="language" onchange="updateFooter()">
       <option value="en">English</option>
       <option value="de">German (Deutsch)</option>
     </select>
@@ -436,7 +436,7 @@
 
   <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="Toggle sound">🔊</button>
 
-  <div class="footer">v1.0 | made by slcker</div>
+  <div class="footer" id="footerInfo">v1.0 | made by slcker</div>
 
   <div class="howto">
     <h3>How to use</h3>
@@ -763,6 +763,31 @@ function playDing() {
   } catch(e) {}
 }
 
+// === Last Updated (GitHub commit date) ===
+async function fetchLastUpdated(locale) {
+  try {
+    const fname = locale === 'en' ? 'guide.txt' : `guide_${locale}.txt`;
+    const resp = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?path=${fname}&per_page=1`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data.length === 0) return null;
+    return new Date(data[0].commit.committer.date);
+  } catch(e) { return null; }
+}
+
+async function updateFooter() {
+  const locale = document.getElementById('language').value;
+  const date = await fetchLastUpdated(locale);
+  const base = 'v1.0 | made by slcker';
+  if (date) {
+    const opts = { year: 'numeric', month: 'short', day: 'numeric' };
+    const timeOpts = { hour: '2-digit', minute: '2-digit' };
+    document.getElementById('footerInfo').textContent = `${base} | Updated ${date.toLocaleDateString(undefined, opts)}, ${date.toLocaleTimeString(undefined, timeOpts)}`;
+  } else {
+    document.getElementById('footerInfo').textContent = base;
+  }
+}
+
 // === Init ===
 loadLastTag();
 document.getElementById('soundToggle').textContent = soundOn ? '🔊' : '🔇';
@@ -778,6 +803,7 @@ document.getElementById('soundToggle').textContent = soundOn ? '🔊' : '🔇';
     console.warn("Auto-fetch on load failed:", e.message);
     setStatus(`Load issue: ${e.message} — try \"Check for Updates\"`, "error");
   }
+  updateFooter();
 })();
 </script>
 </body>
