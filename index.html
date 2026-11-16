@@ -506,13 +506,19 @@ async function checkUpdate() {
   try {
     setStatus("Checking for updates...", "info");
     await loadPako();
+    // Save old data to compare
+    const oldData = _guideCache[locale] || null;
     // Force refresh to bypass cache
-    _guideCache[locale] = null; // clear old entry
+    _guideCache[locale] = null;
     const data = await fetchGuide(locale, true);
-    if (data.includes('|') && data.includes(':')) {
-      setStatus("Updated successfully!", "success");
-    } else {
+    if (!data.includes('|') || !data.includes(':')) {
       setStatus("Invalid response from server.", "error");
+      return;
+    }
+    if (oldData && oldData === data) {
+      setStatus("Already up to date.", "success");
+    } else {
+      setStatus("Updated successfully!", "success");
     }
   } catch (err) {
     setStatus(`Update failed: ${err.message}`, "error");
