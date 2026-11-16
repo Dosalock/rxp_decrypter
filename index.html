@@ -336,19 +336,19 @@ function rc4(data, key) {
 
 function deriveKey(baseStr) {
   const raw = new TextEncoder().encode(baseStr.toLowerCase());
-  // Take last 16 bytes, right-justified with nulls
+  // Take last 16 bytes, right-justified with nulls (nulls go on the LEFT)
   let buf = new Uint8Array(16);
-  const start = Math.max(0, raw.length - 16);
-  for (let i = 0; i < 16; i++) {
-    const srcIdx = i + start;
-    if (srcIdx < raw.length) buf[i] = raw[srcIdx];
+  const len = Math.min(raw.length, 16);
+  const offset = 16 - len; // number of leading null bytes
+  for (let i = 0; i < len; i++) {
+    buf[offset + i] = raw[raw.length - len + i];
   }
-  // XOR mixing loop (use separate output to preserve original values, matching Python semantics)
-  const out = new Uint8Array(16);
+  // XOR mixing loop (in-place, matching Python)
   for (let i = 0; i < 16; i++) {
-    out[(-i) & 0xF] = buf[(15 - i) & 0xF] ^ buf[(13 - i) & 0xF] ^ buf[(12 - i) & 0xF] ^ buf[(10 - i) & 0xF];
+    const idx = ((-i) & 0xF);
+    buf[idx] = buf[(15 - i) & 0xF] ^ buf[(13 - i) & 0xF] ^ buf[(12 - i) & 0xF] ^ buf[(10 - i) & 0xF];
   }
-  return out;
+  return buf;
 }
 
 // === Base64 helpers (handle large data in chunks to avoid call-stack issues) ===
