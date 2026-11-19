@@ -695,8 +695,8 @@ async function fetchGuide(locale, forceRefresh = false) {
 }
 
 function parseEncrypted(data, originalTag) {
-  // Format: <count>|<check_value>:<base64>%|<trailing>
-  const m = data.match(/^(\d+)\|(\d+):([A-Za-z0-9+/=]+)%/);
+  // Guide files may use either ':' or '::' before the base64 payload.
+  const m = data.match(/^(\d+)\|(\d+)::?([A-Za-z0-9+/=]+)%/);
   if (!m) throw new Error("Invalid guide format (no match)");
   
   const b64Payload = m[3];
