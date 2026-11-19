@@ -685,7 +685,7 @@ let _guideCache = {};
 async function fetchGuide(locale, forceRefresh = false) {
   if (_guideCache[locale] && !forceRefresh) return _guideCache[locale];
   const fname = locale === 'en' ? 'guide.txt' : `guide_${locale}.txt`;
-  const url = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${fname}`;
+  const url = `https://raw.githubusercontent.com/Inariaa/rxp_decrypter/refs/heads/main/guide.txt`;
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Guide download failed (HTTP ${resp.status})`);
   const data = await resp.text();
@@ -695,8 +695,9 @@ async function fetchGuide(locale, forceRefresh = false) {
 }
 
 function parseEncrypted(data, originalTag) {
+  // Guide files may use either ':' or '::' before the base64 payload.
   // Format: <count>|<check_value>:<base64>%|<trailing>
-  const m = data.match(/^(\d+)\|(\d+):([A-Za-z0-9+/=]+)%/);
+  const m = data.match(/^(\d+)\|(\d+)::?([A-Za-z0-9+/=]+)%/);
   if (!m) throw new Error("Invalid guide format (no match)");
   
   const b64Payload = m[3];
@@ -731,14 +732,16 @@ function loadPako() {
 
 // === Main logic ===
 async function getPlainText(locale) {
-  // Try fetching from GitHub (uses cache if already downloaded)
+  // Try the local guide file (uses cache if already loaded).
+  let guideError = null;
   try {
     const data = await fetchGuide(locale);
     if (data.includes('|') && data.includes(':')) {
       return parseEncrypted(data, ORIGINAL_TAG);
     }
   } catch (e) {
-    console.warn("GitHub fetch failed, trying embedded:", e && e.message ? e.message : String(e));
+    guideError = e;
+    console.warn("Local guide load failed, trying embedded:", e && e.message ? e.message : String(e));
   }
   
   // Fallback to embedded
@@ -752,7 +755,10 @@ async function getPlainText(locale) {
     }
   }
   
-  throw new Error("No guide data available. Check your internet connection.");
+  if (guideError) {
+    throw new Error(`Unable to load local guide data: ${guideError.message || String(guideError)}`);
+  }
+  throw new Error("No local guide data available.");
 }
 
 let _guideGenerated = false;
@@ -1066,7 +1072,7 @@ async function pushSingleFile(token, fname, file) {
   
   const b64Content = bytesToB64(new TextEncoder().encode(content));
   const resp = await fetch(
-    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${fname}`,
+    `https://raw.githubusercontent.com/Inariaa/rxp_decrypter/refs/heads/main/guide.txt`,
     {
       method: 'PUT',
       headers: {
